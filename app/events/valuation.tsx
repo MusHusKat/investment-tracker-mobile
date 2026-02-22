@@ -5,11 +5,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { eventsApi } from "@/lib/api";
 import { FormField } from "@/components/forms/FormField";
 import { SegmentedPicker } from "@/components/forms/SegmentedPicker";
+import { signalEventSaved } from "@/app/update/existing-property";
 
 type Source = "BANK" | "AGENT" | "SELF" | "AUSPROPERTY";
 
 export default function ValuationEventScreen() {
-  const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
+  const { propertyId, returnTo } = useLocalSearchParams<{ propertyId: string; returnTo?: string }>();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -32,8 +33,13 @@ export default function ValuationEventScreen() {
         source,
         notes: notes || undefined,
       });
-      router.back();
-      router.back(); // go back past event type picker to property detail
+      if (returnTo === "existing-property") {
+        signalEventSaved();
+        router.back();
+      } else {
+        router.back();
+        router.back(); // go back past event type picker to property detail
+      }
     } catch (e: any) {
       Alert.alert("Error", e.message ?? "Failed to save valuation.");
     } finally {

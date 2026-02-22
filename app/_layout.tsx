@@ -37,6 +37,9 @@ function RootLayoutNav() {
       <Stack.Screen name="events/recurring" options={{ headerShown: true, title: "Recurring Cost", ...headerOpts }} />
       <Stack.Screen name="events/oneoff" options={{ headerShown: true, title: "One-off Event", ...headerOpts }} />
       <Stack.Screen name="events/sale" options={{ headerShown: true, title: "Record Sale", ...headerOpts }} />
+      {/* Update Portfolio flow */}
+      <Stack.Screen name="update/new-property" options={{ headerShown: true, title: "New Property", presentation: "modal", ...headerOpts }} />
+      <Stack.Screen name="update/existing-property" options={{ headerShown: true, title: "Existing Property", presentation: "modal", ...headerOpts }} />
     </Stack>
   );
 }

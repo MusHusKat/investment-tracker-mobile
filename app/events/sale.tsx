@@ -4,9 +4,10 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiPost } from "@/lib/api";
 import { FormField } from "@/components/forms/FormField";
+import { signalEventSaved } from "@/app/update/existing-property";
 
 export default function SaleEventScreen() {
-  const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
+  const { propertyId, returnTo } = useLocalSearchParams<{ propertyId: string; returnTo?: string }>();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -58,8 +59,13 @@ export default function SaleEventScreen() {
                 mortgageExit: mortgageExit ? Number(mortgageExit) : null,
                 notes: notes.trim() || null,
               });
-              router.back();
-              router.back();
+              if (returnTo === "existing-property") {
+                signalEventSaved();
+                router.back();
+              } else {
+                router.back();
+                router.back();
+              }
             } catch (e: any) {
               Alert.alert("Error", e.message ?? "Failed to record sale.");
             } finally {

@@ -95,17 +95,9 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between py-4">
-          <View>
-            <Text className="text-text-secondary text-sm">Portfolio Overview</Text>
-            <Text className="text-text-primary text-2xl font-bold">As of Today</Text>
-          </View>
-          <TouchableOpacity
-            className="bg-primary px-4 py-2 rounded-lg"
-            onPress={() => router.push("/property/add")}
-          >
-            <Text className="text-white font-medium text-sm">+ Add Property</Text>
-          </TouchableOpacity>
+        <View className="py-4">
+          <Text className="text-text-secondary text-sm">Portfolio Overview</Text>
+          <Text className="text-text-primary text-2xl font-bold">As of Today</Text>
         </View>
 
         {/* KPI Grid */}

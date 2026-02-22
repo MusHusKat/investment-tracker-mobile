@@ -5,13 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { eventsApi } from "@/lib/api";
 import { FormField } from "@/components/forms/FormField";
 import { SegmentedPicker } from "@/components/forms/SegmentedPicker";
+import { signalEventSaved } from "@/app/update/existing-property";
 
 type Category = "STRATA" | "COUNCIL" | "INSURANCE" | "MGMT_FEE" | "WATER" | "OTHER";
 type FeeType = "fixed" | "pct_rent";
 type Cadence = "weekly" | "monthly" | "quarterly" | "annually";
 
 export default function RecurringCostEventScreen() {
-  const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
+  const { propertyId, returnTo } = useLocalSearchParams<{ propertyId: string; returnTo?: string }>();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -40,8 +41,13 @@ export default function RecurringCostEventScreen() {
         cadence,
         notes: notes || undefined,
       });
-      router.back();
-      router.back();
+      if (returnTo === "existing-property") {
+        signalEventSaved();
+        router.back();
+      } else {
+        router.back();
+        router.back();
+      }
     } catch (e: any) {
       Alert.alert("Error", e.message ?? "Failed to save recurring cost.");
     } finally {

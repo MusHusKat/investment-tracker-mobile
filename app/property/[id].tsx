@@ -198,19 +198,13 @@ export default function PropertyDetailScreen() {
           )}
 
           {/* Event timeline */}
-          <View className="flex-row items-center justify-between mb-3">
+          <View className="mb-3">
             <Text className="text-text-primary font-semibold text-lg">Event Timeline</Text>
-            <TouchableOpacity
-              className="bg-primary px-3 py-1.5 rounded-lg"
-              onPress={() => router.push({ pathname: "/events/add", params: { propertyId: id } })}
-            >
-              <Text className="text-white text-sm font-medium">+ Add</Text>
-            </TouchableOpacity>
           </View>
 
           {timeline.length === 0 ? (
             <View className="bg-surface rounded-2xl p-4 mb-4 items-center">
-              <Text className="text-text-secondary text-sm">No events yet. Tap + Add to get started.</Text>
+              <Text className="text-text-secondary text-sm">No events yet. Use the Update Portfolio button to get started.</Text>
             </View>
           ) : (
             timeline.map((item, i) => (
