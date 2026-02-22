@@ -40,6 +40,7 @@ export default function PropertyDetailScreen() {
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [collapsedYears, setCollapsedYears] = useState<Set<number>>(new Set());
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -200,7 +201,7 @@ export default function PropertyDetailScreen() {
           {/* Event timeline */}
           <View className="mb-4 mt-2">
             <Text className="text-text-primary font-semibold text-lg">Event Timeline</Text>
-            <Text className="text-text-secondary text-xs mt-0.5">Tap to expand · Pencil to edit</Text>
+            <Text className="text-text-secondary text-xs mt-0.5">Tap event to expand · Tap year to collapse</Text>
           </View>
 
           {timeline.length === 0 ? (
@@ -208,27 +209,46 @@ export default function PropertyDetailScreen() {
               <Text className="text-text-secondary text-sm">No events yet. Use the Update Portfolio button to get started.</Text>
             </View>
           ) : (
-            grouped.map(({ year, items }) => (
-              <View key={year}>
-                {/* Year divider */}
-                <View className="flex-row items-center mb-3 mt-1">
-                  <View className="flex-1 h-px bg-surface-2" />
-                  <Text className="text-text-secondary text-xs font-semibold mx-3">{year}</Text>
-                  <View className="flex-1 h-px bg-surface-2" />
+            grouped.map(({ year, items }) => {
+              const isCollapsed = collapsedYears.has(year);
+              return (
+                <View key={year}>
+                  {/* Tappable year divider */}
+                  <TouchableOpacity
+                    onPress={() => setCollapsedYears((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(year)) next.delete(year);
+                      else next.add(year);
+                      return next;
+                    })}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: "row", alignItems: "center", marginBottom: 8, marginTop: 4 }}
+                  >
+                    <View style={{ flex: 1, height: 1, backgroundColor: "#334155" }} />
+                    <View style={{
+                      flexDirection: "row", alignItems: "center",
+                      marginHorizontal: 10, gap: 5,
+                    }}>
+                      <Text style={{ color: "#64748b", fontSize: 12, fontWeight: "600" }}>{year}</Text>
+                      <Text style={{ color: "#475569", fontSize: 10 }}>{isCollapsed ? "▶" : "▼"}</Text>
+                    </View>
+                    <View style={{ flex: 1, height: 1, backgroundColor: "#334155" }} />
+                  </TouchableOpacity>
+
+                  {!isCollapsed && items.map((item, i) => (
+                    <TimelineCard
+                      key={i}
+                      item={item}
+                      fmt={fmt}
+                      fmtDate={fmtDate}
+                      pct={pct}
+                      propertyId={id!}
+                      router={router}
+                    />
+                  ))}
                 </View>
-                {items.map((item, i) => (
-                  <TimelineCard
-                    key={i}
-                    item={item}
-                    fmt={fmt}
-                    fmtDate={fmtDate}
-                    pct={pct}
-                    propertyId={id!}
-                    router={router}
-                  />
-                ))}
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       </SafeAreaView>
@@ -536,35 +556,43 @@ function TimelineCard({ item, fmt, fmtDate, pct, propertyId, router }: {
       onPress={() => setExpanded((v) => !v)}
       activeOpacity={0.8}
     >
+      {/* Collapsed row — no pencil */}
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <Text style={{ fontSize: 18, marginRight: 10 }}>{icon}</Text>
         <View style={{ flex: 1 }}>
           <Text style={{ color: "#f1f5f9", fontWeight: "600", fontSize: 14 }}>{title}</Text>
           <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>{fmtDate(date)}</Text>
         </View>
-        <Text style={{ color: "#94a3b8", fontSize: 13, marginRight: 10 }}>{subtitle}</Text>
-        {/* Pencil edit button */}
-        <TouchableOpacity
-          onPress={(e) => { e.stopPropagation(); onEdit(); }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{
-            backgroundColor: "#0f172a",
-            borderRadius: 8,
-            width: 30,
-            height: 30,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 14 }}>✎</Text>
-        </TouchableOpacity>
+        <Text style={{ color: "#94a3b8", fontSize: 13, marginRight: 6 }}>{subtitle}</Text>
+        {/* Chevron indicating expandability */}
+        <Text style={{ color: "#475569", fontSize: 12 }}>{expanded ? "▲" : "▼"}</Text>
       </View>
 
+      {/* Expanded section — details + edit button */}
       {expanded && details.length > 0 && (
         <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: "#334155", paddingTop: 10 }}>
           {details.map((d, i) => (
             <DetailRow key={i} label={d.label} value={d.value} />
           ))}
+          {/* Edit button — only visible when expanded */}
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); onEdit(); }}
+            style={{
+              marginTop: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "flex-start",
+              backgroundColor: "#312e81",
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              gap: 6,
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={{ color: "#a5b4fc", fontSize: 14 }}>✎</Text>
+            <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600" }}>Edit</Text>
+          </TouchableOpacity>
         </View>
       )}
     </TouchableOpacity>

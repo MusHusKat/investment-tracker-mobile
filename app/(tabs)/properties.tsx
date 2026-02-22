@@ -92,7 +92,7 @@ export default function PropertiesScreen() {
                       {prop.address}
                     </Text>
                   </View>
-                  <Text className="text-text-secondary text-xs">›</Text>
+                  <Text style={{ color: "#6366f1", fontSize: 20, fontWeight: "300" }}>›</Text>
                 </View>
 
                 <View className="flex-row mt-3 pt-3 border-t border-surface-2 gap-6">
