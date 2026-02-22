@@ -40,6 +40,8 @@ function RootLayoutNav() {
       {/* Update Portfolio flow */}
       <Stack.Screen name="update/new-property" options={{ headerShown: true, title: "New Property", presentation: "modal", ...headerOpts }} />
       <Stack.Screen name="update/existing-property" options={{ headerShown: true, title: "Existing Property", presentation: "modal", ...headerOpts }} />
+      {/* Portfolio management */}
+      <Stack.Screen name="portfolio/edit" options={{ headerShown: true, title: "Portfolio", presentation: "modal", ...headerOpts }} />
     </Stack>
   );
 }

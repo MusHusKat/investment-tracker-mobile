@@ -81,9 +81,31 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return apiFetch<T>(path, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiDelete(path: string): Promise<void> {
   await apiFetch(path, { method: "DELETE" });
 }
+
+// ─── Portfolio CRUD helpers ───────────────────────────────────────────────────
+
+export interface PortfolioPayload {
+  name: string;
+  description?: string | null;
+  propertyIds: string[];
+}
+
+export const portfolioApi = {
+  list: () => apiFetch<any[]>("/api/portfolios"),
+  create: (body: PortfolioPayload) => apiPost<any>("/api/portfolios", body),
+  update: (id: string, body: PortfolioPayload) => apiPut<any>(`/api/portfolios/${id}`, body),
+  delete: (id: string) => apiDelete(`/api/portfolios/${id}`),
+};
 
 // ─── Computed KPI endpoint ────────────────────────────────────────────────────
 
