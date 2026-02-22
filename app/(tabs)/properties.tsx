@@ -18,7 +18,8 @@ const STATE_COLORS: Record<string, string> = {
   TAS: "bg-teal-500",
 };
 
-function stateFromAddress(address: string): string {
+function stateFromAddress(address: string | null): string {
+  if (!address) return "AU";
   const match = address.match(/\b(QLD|NSW|VIC|WA|SA|TAS|NT|ACT)\b/);
   return match?.[1] ?? "AU";
 }
@@ -31,7 +32,7 @@ export default function PropertiesScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await apiFetch<PropertyWithSnapshots[]>("/api/properties");
+      const data = await apiFetch<PropertyWithSnapshots[]>("/api/properties?includeSnapshots=true");
       setProperties(data);
     } catch (e) {
       console.error(e);
@@ -43,8 +44,10 @@ export default function PropertiesScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const fmt = (n: number) =>
-    n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1_000).toFixed(0)}k`;
+  const fmt = (n: number) => {
+    if (!isFinite(n)) return "$0";
+    return n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1_000).toFixed(0)}k`;
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -76,8 +79,8 @@ export default function PropertiesScreen() {
           properties.map((prop) => {
             const state = stateFromAddress(prop.address);
             const dotColor = STATE_COLORS[state] ?? "bg-muted";
-            const latestSnap = prop.snapshots.sort((a, b) => b.year - a.year)[0];
-            const purchaseYear = new Date(prop.purchaseDate).getFullYear();
+            const latestSnap = (prop.snapshots ?? []).sort((a, b) => b.year - a.year)[0];
+            const purchaseYear = prop.purchaseDate ? new Date(prop.purchaseDate).getFullYear() : null;
             return (
               <TouchableOpacity
                 key={prop.id}
@@ -109,7 +112,7 @@ export default function PropertiesScreen() {
                   </View>
                   <View>
                     <Text className="text-text-secondary text-xs">Year Purchased</Text>
-                    <Text className="text-text-primary font-semibold text-sm">{purchaseYear}</Text>
+                    <Text className="text-text-primary font-semibold text-sm">{purchaseYear ?? "—"}</Text>
                   </View>
                   {latestSnap && (
                     <View>

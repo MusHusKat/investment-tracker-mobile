@@ -30,11 +30,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font",
-      [
-        "@react-native-async-storage/async-storage",
-        { "exclude": ["NSUserDefaults"] }
-      ]
+      "expo-font"
     ],
     "scheme": "investmenttracker",
     "experiments": {

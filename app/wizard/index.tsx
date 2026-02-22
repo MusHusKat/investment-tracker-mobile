@@ -128,7 +128,7 @@ export default function WizardScreen() {
             <Text className={form.propertyId === p.id ? "text-primary font-semibold" : "text-text-primary"}>
               {p.name}
             </Text>
-            <Text className="text-text-secondary text-xs mt-0.5">{p.address}</Text>
+            <Text className="text-text-secondary text-xs mt-0.5">{p.address ?? ""}</Text>
           </TouchableOpacity>
         ))}
       </View>

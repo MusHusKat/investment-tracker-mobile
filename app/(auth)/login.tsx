@@ -78,13 +78,14 @@ export default function LoginScreen() {
         {/* Submit */}
         <TouchableOpacity
           className="bg-primary rounded-xl py-4 items-center"
+          style={{ backgroundColor: "#6366f1", borderRadius: 12, paddingVertical: 16, alignItems: "center" }}
           onPress={handleLogin}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-semibold text-base">Sign In</Text>
+            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>Sign In</Text>
           )}
         </TouchableOpacity>
       </View>

@@ -31,8 +31,10 @@ export default function PortfoliosScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const fmt = (n: number) =>
-    n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1_000).toFixed(1)}k`;
+  const fmt = (n: number) => {
+    if (!isFinite(n)) return "$0";
+    return n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1_000).toFixed(1)}k`;
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -50,7 +52,7 @@ export default function PortfoliosScreen() {
         ) : (
           portfolios.map((portfolio) => {
             const props = portfolio.properties.map((pp) => pp.property);
-            const allSnaps = props.flatMap((p) => p.snapshots);
+            const allSnaps = props.flatMap((p) => p.snapshots ?? []);
             const years = [...new Set(allSnaps.map((s) => s.year))].sort((a, b) => b - a);
             const latestYear = years[0];
             const latestSnaps = latestYear ? allSnaps.filter((s) => s.year === latestYear) : [];
