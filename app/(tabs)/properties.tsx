@@ -56,14 +56,8 @@ export default function PropertiesScreen() {
         contentContainerClassName="px-4 pb-8"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#6366f1" />}
       >
-        <View className="flex-row items-center justify-between py-4">
+        <View className="py-4">
           <Text className="text-text-primary text-2xl font-bold">Properties</Text>
-          <TouchableOpacity
-            className="bg-primary px-4 py-2 rounded-lg"
-            onPress={() => router.push("/wizard")}
-          >
-            <Text className="text-white font-medium text-sm">+ Add</Text>
-          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -71,9 +65,7 @@ export default function PropertiesScreen() {
         ) : properties.length === 0 ? (
           <View className="items-center mt-20">
             <Text className="text-text-secondary text-base">No properties yet.</Text>
-            <TouchableOpacity className="mt-4 bg-primary px-6 py-3 rounded-xl" onPress={() => router.push("/wizard")}>
-              <Text className="text-white font-semibold">Add your first property</Text>
-            </TouchableOpacity>
+            <Text className="text-text-secondary text-sm mt-2">Use the Update Portfolio button to add your first property.</Text>
           </View>
         ) : (
           properties.map((prop) => {
