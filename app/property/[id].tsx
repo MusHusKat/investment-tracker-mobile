@@ -8,18 +8,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { fetchComputedWithForecast, eventsApi } from "@/lib/api";
 import { ForecastSection } from "@/components/property/ForecastSection";
 import type {
-  ComputedResponse, LoanEvent, TenancyEvent,
+  ComputedResponse, PurchaseEvent, LoanEvent, TenancyEvent,
   RecurringCostEvent, OneOffEvent, ValuationEvent, SaleEvent,
 } from "@/lib/types";
 
 type TimelineItem =
-  | { kind: "purchase"; date: string; purchasePrice: number; loanAmount: number }
+  | { kind: "purchase"; data: PurchaseEvent }
   | { kind: "loan"; data: LoanEvent }
   | { kind: "tenancy"; data: TenancyEvent }
   | { kind: "recurring"; data: RecurringCostEvent }
   | { kind: "oneoff"; data: OneOffEvent }
   | { kind: "valuation"; data: ValuationEvent }
   | { kind: "sale"; data: SaleEvent };
+
+function itemDate(item: TimelineItem): string {
+  switch (item.kind) {
+    case "purchase": return item.data.settlementDate;
+    case "sale":     return item.data.settlementDate;
+    case "loan":     return item.data.effectiveDate;
+    case "tenancy":  return item.data.effectiveDate;
+    case "recurring":return item.data.effectiveDate;
+    case "oneoff":   return item.data.date;
+    case "valuation":return item.data.date;
+  }
+}
 
 export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,8 +44,9 @@ export default function PropertyDetailScreen() {
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const [res, loans, tenancies, recurringCosts, oneOffs, valuations, sale] = await Promise.all([
+      const [res, purchase, loans, tenancies, recurringCosts, oneOffs, valuations, sale] = await Promise.all([
         fetchComputedWithForecast(id),
+        eventsApi.purchase.get(id).catch(() => null as PurchaseEvent | null),
         eventsApi.loan.list(id).catch(() => [] as LoanEvent[]),
         eventsApi.tenancy.list(id).catch(() => [] as TenancyEvent[]),
         eventsApi.recurringCost.list(id).catch(() => [] as RecurringCostEvent[]),
@@ -43,16 +56,8 @@ export default function PropertyDetailScreen() {
       ]);
       setComputed(res);
 
-      // Build a unified chronological timeline
       const items: TimelineItem[] = [];
-      if (res.events.purchase) {
-        items.push({
-          kind: "purchase",
-          date: res.events.purchase.settlementDate,
-          purchasePrice: res.events.purchase.purchasePrice,
-          loanAmount: res.events.purchase.loanAmount,
-        });
-      }
+      if (purchase) items.push({ kind: "purchase", data: purchase });
       loans.forEach((d) => items.push({ kind: "loan", data: d }));
       tenancies.forEach((d) => items.push({ kind: "tenancy", data: d }));
       recurringCosts.forEach((d) => items.push({ kind: "recurring", data: d }));
@@ -60,22 +65,8 @@ export default function PropertyDetailScreen() {
       valuations.forEach((d) => items.push({ kind: "valuation", data: d }));
       if (sale) items.push({ kind: "sale", data: sale });
 
-      // Sort by date ascending
-      items.sort((a, b) => {
-        const dateA = a.kind === "purchase" ? a.date :
-          a.kind === "sale" ? a.data.settlementDate :
-          a.kind === "loan" ? a.data.effectiveDate :
-          a.kind === "tenancy" ? a.data.effectiveDate :
-          a.kind === "recurring" ? a.data.effectiveDate :
-          a.kind === "oneoff" ? a.data.date : a.data.date;
-        const dateB = b.kind === "purchase" ? b.date :
-          b.kind === "sale" ? b.data.settlementDate :
-          b.kind === "loan" ? b.data.effectiveDate :
-          b.kind === "tenancy" ? b.data.effectiveDate :
-          b.kind === "recurring" ? b.data.effectiveDate :
-          b.kind === "oneoff" ? b.data.date : b.data.date;
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      });
+      // Most recent first
+      items.sort((a, b) => new Date(itemDate(b)).getTime() - new Date(itemDate(a)).getTime());
       setTimeline(items);
     } catch (e) {
       console.error(e);
@@ -95,8 +86,8 @@ export default function PropertyDetailScreen() {
   };
   const pct = (n: number | null | undefined) =>
     n != null && isFinite(n) ? `${(n * 100).toFixed(2)}%` : "—";
-  const fmtDate = (s: string) =>
-    new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  const fmtDate = (s: string | null | undefined) =>
+    s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
   if (loading) {
     return (
@@ -117,6 +108,15 @@ export default function PropertyDetailScreen() {
 
   const k = computed.kpis;
   const prop = computed.property;
+
+  // Build year-grouped timeline with dividers
+  const grouped: Array<{ year: number; items: TimelineItem[] }> = [];
+  for (const item of timeline) {
+    const year = new Date(itemDate(item)).getFullYear();
+    const last = grouped[grouped.length - 1];
+    if (last && last.year === year) last.items.push(item);
+    else grouped.push({ year, items: [item] });
+  }
 
   return (
     <>
@@ -198,8 +198,9 @@ export default function PropertyDetailScreen() {
           )}
 
           {/* Event timeline */}
-          <View className="mb-3">
+          <View className="mb-4 mt-2">
             <Text className="text-text-primary font-semibold text-lg">Event Timeline</Text>
+            <Text className="text-text-secondary text-xs mt-0.5">Tap to expand · Pencil to edit</Text>
           </View>
 
           {timeline.length === 0 ? (
@@ -207,8 +208,26 @@ export default function PropertyDetailScreen() {
               <Text className="text-text-secondary text-sm">No events yet. Use the Update Portfolio button to get started.</Text>
             </View>
           ) : (
-            timeline.map((item, i) => (
-              <TimelineCard key={i} item={item} fmt={fmt} fmtDate={fmtDate} pct={pct} />
+            grouped.map(({ year, items }) => (
+              <View key={year}>
+                {/* Year divider */}
+                <View className="flex-row items-center mb-3 mt-1">
+                  <View className="flex-1 h-px bg-surface-2" />
+                  <Text className="text-text-secondary text-xs font-semibold mx-3">{year}</Text>
+                  <View className="flex-1 h-px bg-surface-2" />
+                </View>
+                {items.map((item, i) => (
+                  <TimelineCard
+                    key={i}
+                    item={item}
+                    fmt={fmt}
+                    fmtDate={fmtDate}
+                    pct={pct}
+                    propertyId={id!}
+                    router={router}
+                  />
+                ))}
+              </View>
             ))
           )}
         </ScrollView>
@@ -252,86 +271,255 @@ function Divider() {
   return <View className="border-t border-surface-2 my-2" />;
 }
 
-function TimelineCard({ item, fmt, fmtDate, pct }: {
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row justify-between py-1">
+      <Text style={{ color: "#94a3b8", fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: "#cbd5e1", fontSize: 12, fontWeight: "500" }}>{value}</Text>
+    </View>
+  );
+}
+
+function TimelineCard({ item, fmt, fmtDate, pct, propertyId, router }: {
   item: TimelineItem;
   fmt: (n: number | null | undefined) => string;
-  fmtDate: (s: string) => string;
+  fmtDate: (s: string | null | undefined) => string;
   pct: (n: number | null | undefined) => string;
+  propertyId: string;
+  router: ReturnType<typeof useRouter>;
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const { icon, title, date, subtitle, details } = (() => {
+  const onEdit = () => {
     switch (item.kind) {
       case "purchase":
+        router.push({
+          pathname: "/events/purchase" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            // pre-populate fields
+            settlementDate: item.data.settlementDate.split("T")[0],
+            purchasePrice: String(item.data.purchasePrice),
+            deposit: String(item.data.deposit ?? ""),
+            stampDuty: String(item.data.stampDuty ?? ""),
+            legalFees: String(item.data.legalFees ?? ""),
+            buyersAgentFee: String(item.data.buyersAgentFee ?? ""),
+            loanAmount: String(item.data.loanAmount ?? ""),
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "loan":
+        router.push({
+          pathname: "/events/loan" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            effectiveDate: item.data.effectiveDate.split("T")[0],
+            lender: item.data.lender,
+            loanType: item.data.loanType,
+            rateType: item.data.rateType,
+            annualRate: String((item.data.annualRate * 100).toFixed(4)),
+            repaymentAmount: String(item.data.repaymentAmount),
+            repaymentCadence: item.data.repaymentCadence,
+            fixedExpiry: item.data.fixedExpiry ? item.data.fixedExpiry.split("T")[0] : "",
+            offsetBalance: String(item.data.offsetBalance ?? ""),
+            manualLoanBalance: String(item.data.manualLoanBalance ?? ""),
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "tenancy":
+        router.push({
+          pathname: "/events/tenancy" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            type: item.data.type,
+            effectiveDate: item.data.effectiveDate.split("T")[0],
+            weeklyRent: String(item.data.weeklyRent ?? ""),
+            leaseTermMonths: String(item.data.leaseTermMonths ?? ""),
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "recurring":
+        router.push({
+          pathname: "/events/recurring" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            effectiveDate: item.data.effectiveDate.split("T")[0],
+            endDate: item.data.endDate ? item.data.endDate.split("T")[0] : "",
+            category: item.data.category,
+            feeType: item.data.feeType,
+            amount: String(item.data.amount),
+            cadence: item.data.cadence,
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "oneoff":
+        router.push({
+          pathname: "/events/oneoff" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            date: item.data.date.split("T")[0],
+            amount: String(Math.abs(item.data.amount)),
+            isExpense: item.data.amount < 0 ? "true" : "false",
+            category: item.data.category,
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "valuation":
+        router.push({
+          pathname: "/events/valuation" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            date: item.data.date.split("T")[0],
+            value: String(item.data.value),
+            source: item.data.source,
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+      case "sale":
+        router.push({
+          pathname: "/events/sale" as any,
+          params: {
+            propertyId,
+            eventId: item.data.id,
+            settlementDate: item.data.settlementDate.split("T")[0],
+            salePrice: String(item.data.salePrice),
+            agentFee: String(item.data.agentFee ?? ""),
+            legalFees: String(item.data.legalFees ?? ""),
+            otherCosts: String(item.data.otherCosts ?? ""),
+            mortgageExit: String(item.data.mortgageExit ?? ""),
+            notes: item.data.notes ?? "",
+          },
+        });
+        break;
+    }
+  };
+
+  const { icon, title, date, subtitle, details } = (() => {
+    switch (item.kind) {
+      case "purchase": {
+        const d = item.data;
         return {
           icon: "🏠", title: "Purchase",
-          date: item.date,
-          subtitle: `${fmt(item.purchasePrice)} · Loan ${fmt(item.loanAmount)}`,
-          details: [],
-        };
-      case "loan":
-        return {
-          icon: "🏦", title: `Loan — ${item.data.lender}`,
-          date: item.data.effectiveDate,
-          subtitle: `${pct(item.data.annualRate)} ${item.data.rateType} ${item.data.loanType}`,
+          date: d.settlementDate,
+          subtitle: fmt(d.purchasePrice),
           details: [
-            `Repayment: ${fmt(item.data.repaymentAmount)} / ${item.data.repaymentCadence}`,
-            item.data.manualLoanBalance != null ? `Balance: ${fmt(item.data.manualLoanBalance)}` : null,
-            item.data.offsetBalance != null ? `Offset: ${fmt(item.data.offsetBalance)}` : null,
-            item.data.fixedExpiry ? `Fixed expiry: ${fmtDate(item.data.fixedExpiry)}` : null,
-          ].filter(Boolean) as string[],
+            { label: "Purchase Price", value: fmt(d.purchasePrice) },
+            { label: "Loan Amount", value: fmt(d.loanAmount) },
+            { label: "Deposit", value: fmt(d.deposit) },
+            { label: "Stamp Duty", value: fmt(d.stampDuty) },
+            { label: "Legal Fees", value: fmt(d.legalFees) },
+            ...(d.buyersAgentFee ? [{ label: "Buyer's Agent Fee", value: fmt(d.buyersAgentFee) }] : []),
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
-      case "tenancy":
+      }
+      case "loan": {
+        const d = item.data;
         return {
-          icon: item.data.type === "END" ? "🔑" : "👤",
-          title: `Tenancy — ${item.data.type.replace("_", " ")}`,
-          date: item.data.effectiveDate,
-          subtitle: item.data.weeklyRent != null ? `${fmt(item.data.weeklyRent)}/wk` : "End of tenancy",
-          details: item.data.leaseTermMonths ? [`Lease: ${item.data.leaseTermMonths} months`] : [],
+          icon: "🏦", title: `Loan — ${d.lender}`,
+          date: d.effectiveDate,
+          subtitle: `${pct(d.annualRate)} ${d.rateType} ${d.loanType}`,
+          details: [
+            { label: "Lender", value: d.lender },
+            { label: "Rate", value: `${pct(d.annualRate)} ${d.rateType}` },
+            { label: "Type", value: d.loanType === "IO" ? "Interest Only" : "Principal & Interest" },
+            { label: "Repayment", value: `${fmt(d.repaymentAmount)} / ${d.repaymentCadence}` },
+            ...(d.manualLoanBalance != null ? [{ label: "Loan Balance", value: fmt(d.manualLoanBalance) }] : []),
+            ...(d.offsetBalance != null ? [{ label: "Offset", value: fmt(d.offsetBalance) }] : []),
+            ...(d.fixedExpiry ? [{ label: "Fixed Expiry", value: fmtDate(d.fixedExpiry) }] : []),
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
-      case "recurring":
+      }
+      case "tenancy": {
+        const d = item.data;
         return {
-          icon: "🔄", title: `${formatCategory(item.data.category)} (Recurring)`,
-          date: item.data.effectiveDate,
-          subtitle: item.data.feeType === "pct_rent"
-            ? `${pct(item.data.amount)} of rent / ${item.data.cadence}`
-            : `${fmt(item.data.amount)} / ${item.data.cadence}`,
-          details: item.data.endDate ? [`Ends: ${fmtDate(item.data.endDate)}`] : ["Ongoing"],
+          icon: d.type === "END" ? "🔑" : "👤",
+          title: `Tenancy — ${d.type.replace("_", " ")}`,
+          date: d.effectiveDate,
+          subtitle: d.weeklyRent != null ? `${fmt(d.weeklyRent)}/wk` : "End of tenancy",
+          details: [
+            { label: "Type", value: d.type.replace("_", " ") },
+            ...(d.weeklyRent != null ? [{ label: "Weekly Rent", value: fmt(d.weeklyRent) }] : []),
+            ...(d.leaseTermMonths ? [{ label: "Lease Term", value: `${d.leaseTermMonths} months` }] : []),
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
-      case "oneoff":
+      }
+      case "recurring": {
+        const d = item.data;
         return {
-          icon: item.data.amount >= 0 ? "💰" : "🔧",
-          title: formatCategory(item.data.category),
-          date: item.data.date,
-          subtitle: fmt(item.data.amount),
-          details: item.data.notes ? [item.data.notes] : [],
+          icon: "🔄", title: `${formatCategory(d.category)} (Recurring)`,
+          date: d.effectiveDate,
+          subtitle: d.feeType === "pct_rent"
+            ? `${pct(d.amount)} of rent / ${d.cadence}`
+            : `${fmt(d.amount)} / ${d.cadence}`,
+          details: [
+            { label: "Category", value: formatCategory(d.category) },
+            { label: "Amount", value: d.feeType === "pct_rent" ? `${pct(d.amount)} of rent` : fmt(d.amount) },
+            { label: "Cadence", value: d.cadence },
+            { label: "End Date", value: d.endDate ? fmtDate(d.endDate) : "Ongoing" },
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
-      case "valuation":
+      }
+      case "oneoff": {
+        const d = item.data;
         return {
-          icon: "📊", title: `Valuation — ${item.data.source}`,
-          date: item.data.date,
-          subtitle: fmt(item.data.value),
-          details: item.data.notes ? [item.data.notes] : [],
+          icon: d.amount >= 0 ? "💰" : "🔧",
+          title: formatCategory(d.category),
+          date: d.date,
+          subtitle: fmt(d.amount),
+          details: [
+            { label: "Type", value: d.amount >= 0 ? "Income" : "Expense" },
+            { label: "Amount", value: fmt(d.amount) },
+            { label: "Category", value: formatCategory(d.category) },
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
+      }
+      case "valuation": {
+        const d = item.data;
+        return {
+          icon: "📊", title: `Valuation — ${d.source}`,
+          date: d.date,
+          subtitle: fmt(d.value),
+          details: [
+            { label: "Value", value: fmt(d.value) },
+            { label: "Source", value: d.source },
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
+        };
+      }
       case "sale": {
-        const totalCosts =
-          (item.data.agentFee ?? 0) +
-          (item.data.legalFees ?? 0) +
-          (item.data.otherCosts ?? 0) +
-          (item.data.mortgageExit ?? 0);
-        const netProceeds = item.data.salePrice - totalCosts;
+        const d = item.data;
+        const totalCosts = (d.agentFee ?? 0) + (d.legalFees ?? 0) + (d.otherCosts ?? 0) + (d.mortgageExit ?? 0);
+        const netProceeds = d.salePrice - totalCosts;
         return {
           icon: "🤝", title: "Sale",
-          date: item.data.settlementDate,
-          subtitle: `${fmt(item.data.salePrice)} · Net ${fmt(netProceeds)}`,
+          date: d.settlementDate,
+          subtitle: `${fmt(d.salePrice)} · Net ${fmt(netProceeds)}`,
           details: [
-            item.data.agentFee ? `Agent fee: ${fmt(item.data.agentFee)}` : null,
-            item.data.legalFees ? `Legal fees: ${fmt(item.data.legalFees)}` : null,
-            item.data.otherCosts ? `Other costs: ${fmt(item.data.otherCosts)}` : null,
-            item.data.mortgageExit ? `Mortgage exit: ${fmt(item.data.mortgageExit)}` : null,
-            totalCosts > 0 ? `Total selling costs: ${fmt(totalCosts)}` : null,
-            item.data.notes ?? null,
-          ].filter(Boolean) as string[],
+            { label: "Sale Price", value: fmt(d.salePrice) },
+            ...(d.agentFee ? [{ label: "Agent Fee", value: fmt(d.agentFee) }] : []),
+            ...(d.legalFees ? [{ label: "Legal Fees", value: fmt(d.legalFees) }] : []),
+            ...(d.otherCosts ? [{ label: "Other Costs", value: fmt(d.otherCosts) }] : []),
+            ...(d.mortgageExit ? [{ label: "Mortgage Exit", value: fmt(d.mortgageExit) }] : []),
+            { label: "Net Proceeds", value: fmt(netProceeds) },
+            ...(d.notes ? [{ label: "Notes", value: d.notes }] : []),
+          ],
         };
       }
     }
@@ -339,22 +527,43 @@ function TimelineCard({ item, fmt, fmtDate, pct }: {
 
   return (
     <TouchableOpacity
-      className="bg-surface rounded-2xl p-4 mb-2"
+      style={{
+        backgroundColor: "#1e293b",
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 8,
+      }}
       onPress={() => setExpanded((v) => !v)}
       activeOpacity={0.8}
     >
-      <View className="flex-row items-center">
-        <Text className="text-lg mr-3">{icon}</Text>
-        <View className="flex-1">
-          <Text className="text-text-primary font-medium text-sm">{title}</Text>
-          <Text className="text-text-secondary text-xs mt-0.5">{fmtDate(date)}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text style={{ fontSize: 18, marginRight: 10 }}>{icon}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#f1f5f9", fontWeight: "600", fontSize: 14 }}>{title}</Text>
+          <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>{fmtDate(date)}</Text>
         </View>
-        <Text className="text-text-secondary text-sm">{subtitle}</Text>
+        <Text style={{ color: "#94a3b8", fontSize: 13, marginRight: 10 }}>{subtitle}</Text>
+        {/* Pencil edit button */}
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); onEdit(); }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            backgroundColor: "#0f172a",
+            borderRadius: 8,
+            width: 30,
+            height: 30,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 14 }}>✎</Text>
+        </TouchableOpacity>
       </View>
+
       {expanded && details.length > 0 && (
-        <View className="mt-3 border-t border-surface-2 pt-3">
+        <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: "#334155", paddingTop: 10 }}>
           {details.map((d, i) => (
-            <Text key={i} className="text-text-secondary text-xs mb-1">{d}</Text>
+            <DetailRow key={i} label={d.label} value={d.value} />
           ))}
         </View>
       )}

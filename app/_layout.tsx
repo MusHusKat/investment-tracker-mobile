@@ -31,6 +31,7 @@ function RootLayoutNav() {
       {/* Event flow */}
       <Stack.Screen name="events/select-property" options={{ headerShown: true, title: "Select Property", ...headerOpts }} />
       <Stack.Screen name="events/add" options={{ headerShown: true, title: "Add Event", ...headerOpts }} />
+      <Stack.Screen name="events/purchase" options={{ headerShown: true, title: "Purchase", ...headerOpts }} />
       <Stack.Screen name="events/valuation" options={{ headerShown: true, title: "Valuation", ...headerOpts }} />
       <Stack.Screen name="events/tenancy" options={{ headerShown: true, title: "Tenancy", ...headerOpts }} />
       <Stack.Screen name="events/loan" options={{ headerShown: true, title: "Loan Update", ...headerOpts }} />

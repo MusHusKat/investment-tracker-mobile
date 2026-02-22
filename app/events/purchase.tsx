@@ -6,18 +6,25 @@ import { eventsApi } from "@/lib/api";
 import { FormField } from "@/components/forms/FormField";
 
 export default function PurchaseEventScreen() {
-  const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
+  const params = useLocalSearchParams<{
+    propertyId: string; eventId?: string;
+    settlementDate?: string; purchasePrice?: string; deposit?: string;
+    stampDuty?: string; legalFees?: string; buyersAgentFee?: string;
+    loanAmount?: string; notes?: string;
+  }>();
+  const { propertyId } = params;
+  const isEdit = !!params.eventId;
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
-  const [settlementDate, setSettlementDate] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [deposit, setDeposit] = useState("");
-  const [stampDuty, setStampDuty] = useState("");
-  const [legalFees, setLegalFees] = useState("");
-  const [buyersAgentFee, setBuyersAgentFee] = useState("");
-  const [loanAmount, setLoanAmount] = useState("");
-  const [notes, setNotes] = useState("");
+  const [settlementDate, setSettlementDate] = useState(params.settlementDate ?? "");
+  const [purchasePrice, setPurchasePrice] = useState(params.purchasePrice ?? "");
+  const [deposit, setDeposit] = useState(params.deposit ?? "");
+  const [stampDuty, setStampDuty] = useState(params.stampDuty ?? "");
+  const [legalFees, setLegalFees] = useState(params.legalFees ?? "");
+  const [buyersAgentFee, setBuyersAgentFee] = useState(params.buyersAgentFee ?? "");
+  const [loanAmount, setLoanAmount] = useState(params.loanAmount ?? "");
+  const [notes, setNotes] = useState(params.notes ?? "");
 
   const onSave = async () => {
     if (!purchasePrice || isNaN(Number(purchasePrice))) {
@@ -30,7 +37,8 @@ export default function PurchaseEventScreen() {
     }
     setSaving(true);
     try {
-      await eventsApi.purchase.create(propertyId, {
+      // purchase route uses upsert (POST) for both create and edit
+      await eventsApi.purchase.save(propertyId, {
         settlementDate: new Date(settlementDate).toISOString(),
         purchasePrice: Number(purchasePrice),
         deposit: Number(deposit) || 0,
@@ -41,7 +49,6 @@ export default function PurchaseEventScreen() {
         notes: notes || undefined,
       });
       router.back();
-      router.back();
     } catch (e: any) {
       Alert.alert("Error", e.message ?? "Failed to save purchase event.");
     } finally {
@@ -51,12 +58,14 @@ export default function PurchaseEventScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Add Purchase", headerShown: true, headerStyle: { backgroundColor: "#1e293b" }, headerTintColor: "#f1f5f9" }} />
+      <Stack.Screen options={{
+        title: isEdit ? "Edit Purchase" : "Add Purchase",
+        headerShown: true,
+        headerStyle: { backgroundColor: "#1e293b" },
+        headerTintColor: "#f1f5f9",
+      }} />
       <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
         <ScrollView contentContainerClassName="px-4 py-4" keyboardShouldPersistTaps="handled">
-          <View className="bg-surface rounded-2xl p-3 mb-4">
-            <Text className="text-warning text-xs">Note: a property should only have one purchase event. Use this screen only if one doesn't already exist.</Text>
-          </View>
           <FormField label="Settlement Date" value={settlementDate} onChangeText={setSettlementDate} placeholder="YYYY-MM-DD" hint="Format: YYYY-MM-DD" />
           <FormField label="Purchase Price ($)" value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" placeholder="e.g. 650000" />
           <FormField label="Deposit ($)" value={deposit} onChangeText={setDeposit} keyboardType="decimal-pad" placeholder="e.g. 130000" />
@@ -72,7 +81,9 @@ export default function PurchaseEventScreen() {
             disabled={saving}
           >
             {saving ? <ActivityIndicator color="#6366f1" /> : (
-              <Text className="text-white font-semibold text-base">Save Purchase Event</Text>
+              <Text className="text-white font-semibold text-base">
+                {isEdit ? "Save Changes" : "Save Purchase Event"}
+              </Text>
             )}
           </TouchableOpacity>
         </ScrollView>

@@ -132,6 +132,9 @@ export function updateAppreciationRate(propertyId: string, rate: number): Promis
 export const eventsApi = {
   purchase: {
     get: (pid: string) => apiFetch<PurchaseEvent>(`/api/properties/${pid}/events/purchase`),
+    // purchase uses POST as upsert — same endpoint for create and edit
+    save: (pid: string, body: Partial<PurchaseEvent>) =>
+      apiPost<PurchaseEvent>(`/api/properties/${pid}/events/purchase`, body),
     create: (pid: string, body: Partial<PurchaseEvent>) =>
       apiPost<PurchaseEvent>(`/api/properties/${pid}/events/purchase`, body),
   },
@@ -139,31 +142,43 @@ export const eventsApi = {
     list: (pid: string) => apiFetch<LoanEvent[]>(`/api/properties/${pid}/events/loan`),
     create: (pid: string, body: Partial<LoanEvent>) =>
       apiPost<LoanEvent>(`/api/properties/${pid}/events/loan`, body),
+    update: (pid: string, eventId: string, body: Partial<LoanEvent>) =>
+      apiPatch<LoanEvent>(`/api/properties/${pid}/events/loan`, { eventId, ...body }),
   },
   tenancy: {
     list: (pid: string) => apiFetch<TenancyEvent[]>(`/api/properties/${pid}/events/tenancy`),
     create: (pid: string, body: Partial<TenancyEvent>) =>
       apiPost<TenancyEvent>(`/api/properties/${pid}/events/tenancy`, body),
+    update: (pid: string, eventId: string, body: Partial<TenancyEvent>) =>
+      apiPatch<TenancyEvent>(`/api/properties/${pid}/events/tenancy`, { eventId, ...body }),
   },
   recurringCost: {
     list: (pid: string) => apiFetch<RecurringCostEvent[]>(`/api/properties/${pid}/events/recurring-cost`),
     create: (pid: string, body: Partial<RecurringCostEvent>) =>
       apiPost<RecurringCostEvent>(`/api/properties/${pid}/events/recurring-cost`, body),
+    update: (pid: string, eventId: string, body: Partial<RecurringCostEvent>) =>
+      apiPatch<RecurringCostEvent>(`/api/properties/${pid}/events/recurring-cost`, { eventId, ...body }),
   },
   oneOff: {
     list: (pid: string) => apiFetch<OneOffEvent[]>(`/api/properties/${pid}/events/one-off`),
     create: (pid: string, body: Partial<OneOffEvent>) =>
       apiPost<OneOffEvent>(`/api/properties/${pid}/events/one-off`, body),
+    update: (pid: string, eventId: string, body: Partial<OneOffEvent>) =>
+      apiPatch<OneOffEvent>(`/api/properties/${pid}/events/one-off`, { eventId, ...body }),
   },
   valuation: {
     list: (pid: string) => apiFetch<ValuationEvent[]>(`/api/properties/${pid}/events/valuation`),
     create: (pid: string, body: Partial<ValuationEvent>) =>
       apiPost<ValuationEvent>(`/api/properties/${pid}/events/valuation`, body),
+    update: (pid: string, eventId: string, body: Partial<ValuationEvent>) =>
+      apiPatch<ValuationEvent>(`/api/properties/${pid}/events/valuation`, { eventId, ...body }),
   },
   sale: {
     get: (pid: string) => apiFetch<SaleEvent | null>(`/api/properties/${pid}/events/sale`),
     create: (pid: string, body: Partial<SaleEvent>) =>
       apiPost<SaleEvent>(`/api/properties/${pid}/events/sale`, body),
+    update: (pid: string, body: Partial<SaleEvent>) =>
+      apiPatch<SaleEvent>(`/api/properties/${pid}/events/sale`, body),
     delete: (pid: string) => apiDelete(`/api/properties/${pid}/events/sale`),
   },
 };
