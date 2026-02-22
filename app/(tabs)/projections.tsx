@@ -393,9 +393,9 @@ export default function ProjectionsScreen() {
     }
   };
 
-  // ── Find ideal sell point: year with max ROI ─────────────────────────────
+  // ── Find ideal sell point: year with max ANNUALISED ROI ──────────────────
   const idealSellIdx = aggregate
-    ? aggregate.reduce((best, pt, i) => (pt.roi > aggregate[best].roi ? i : best), 0)
+    ? aggregate.reduce((best, pt, i) => (pt.annualisedRoi > aggregate[best].annualisedRoi ? i : best), 0)
     : null;
   const idealSellPt = idealSellIdx != null && aggregate ? aggregate[idealSellIdx] : null;
 
@@ -420,7 +420,8 @@ export default function ProjectionsScreen() {
 
   const roiSeries: LineChartSeries[] = aggregate
     ? [
-        { values: aggregate.map((pt) => pt.roi * 100), color: "#a78bfa", label: "ROI %" },
+        { values: aggregate.map((pt) => pt.annualisedRoi * 100), color: "#a78bfa", label: "Ann. ROI %" },
+        { values: aggregate.map((pt) => pt.roi * 100), color: "#475569", label: "Cumul. ROI %" },
       ]
     : [];
 
@@ -534,8 +535,8 @@ export default function ProjectionsScreen() {
                       <Text style={{ color: "#f1f5f9", fontWeight: "700", fontSize: 14 }}>
                         Ideal Sell: Year {idealSellPt.yearsFromNow} ({idealSellPt.year})
                       </Text>
-                      <Text style={{ color: "#94a3b8", fontSize: 12, marginTop: 2 }}>
-                        Peak ROI {fmtPct(idealSellPt.roi)} · Est. value {fmt(idealSellPt.projectedValue)} · Equity {fmt(idealSellPt.equity)}
+                       <Text style={{ color: "#94a3b8", fontSize: 12, marginTop: 2 }}>
+                        Peak ann. ROI {fmtPct(idealSellPt.annualisedRoi)} · Est. value {fmt(idealSellPt.projectedValue)} · Equity {fmt(idealSellPt.equity)}
                       </Text>
                     </View>
                   </View>
@@ -583,7 +584,8 @@ export default function ProjectionsScreen() {
                       <KpiTile label="Annual Interest" value={fmt(selectedPt.annualInterest)} color="#ef4444" />
                       <KpiTile label="Annual Cashflow" value={fmtSigned(selectedPt.annualNetCashflow)} color={selectedPt.annualNetCashflow >= 0 ? "#22c55e" : "#ef4444"} />
                       <KpiTile label="LVR" value={selectedPt.lvr != null ? fmtPct(selectedPt.lvr) : "—"} />
-                      <KpiTile label="Total ROI" value={fmtPct(selectedPt.roi)} color={selectedPt.roi >= 0 ? "#a78bfa" : "#ef4444"} />
+                      <KpiTile label="Ann. ROI" value={fmtPct(selectedPt.annualisedRoi)} color={selectedPt.annualisedRoi >= 0 ? "#a78bfa" : "#ef4444"} />
+                      <KpiTile label="Cumul. ROI" value={fmtPct(selectedPt.roi)} color={selectedPt.roi >= 0 ? "#64748b" : "#ef4444"} />
                       <KpiTile label="Value CAGR" value={fmtPct(selectedPt.valueCagr)} color="#6366f1" />
                     </View>
                   </View>
@@ -617,12 +619,16 @@ export default function ProjectionsScreen() {
 
                 {/* Chart: ROI */}
                 <View style={{ backgroundColor: "#1e293b", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-                  <Text style={{ color: "#f1f5f9", fontWeight: "600", fontSize: 14, marginBottom: 12 }}>
-                    Return on Investment (ROI %)
+                  <Text style={{ color: "#f1f5f9", fontWeight: "600", fontSize: 14, marginBottom: 4 }}>
+                    Return on Investment
+                  </Text>
+                  <Text style={{ color: "#64748b", fontSize: 11, marginBottom: 8 }}>
+                    Annualised ROI (purple) is the CAGR of total return — use this to compare across time horizons.
+                    Cumulative ROI (grey) is total gain / cost base — will keep rising.
                   </Text>
                   {idealSellIdx != null && (
                     <Text style={{ color: "#a78bfa", fontSize: 12, marginBottom: 8 }}>
-                      ★ Peak at year {aggregate[idealSellIdx].yearsFromNow} — {fmtPct(aggregate[idealSellIdx].roi)} ROI
+                      ★ Peak ann. ROI at year {aggregate[idealSellIdx].yearsFromNow} — {fmtPct(aggregate[idealSellIdx].annualisedRoi)}/yr
                     </Text>
                   )}
                   <LineChart
@@ -632,7 +638,7 @@ export default function ProjectionsScreen() {
                   />
                   <ChartLegend series={roiSeries} />
                   <Text style={{ color: "#475569", fontSize: 11, marginTop: 8 }}>
-                    ROI = (equity gain + cumulative cashflow) / total acquisition cost
+                    Ann. ROI = (1 + total ROI)^(1/years) − 1 · Equity gain includes acquisition costs as sunk cost
                   </Text>
                 </View>
 

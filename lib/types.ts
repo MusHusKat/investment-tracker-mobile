@@ -156,8 +156,12 @@ export interface ForecastPoint {
   annualInterest: number;
   annualNetCashflow: number;
   cumulativeCashflow: number;
+  /** Equity gain measured against the true cash-in basis (includes acquisition costs as sunk cost) */
   cumulativeEquityGain: number;
+  /** Cumulative (total) ROI — grows over time, use annualisedRoi for comparisons */
   roi: number;
+  /** Annualised ROI: CAGR of total return = (1 + roi)^(1/years) - 1 */
+  annualisedRoi: number;
   valueCagr: number;
 }
 

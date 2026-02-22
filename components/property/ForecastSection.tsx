@@ -130,10 +130,11 @@ export function ForecastSection({
           </View>
           <View className="border-t border-surface-2 mt-3 pt-3 flex-row justify-between">
             <View className="items-center flex-1">
-              <Text className="text-text-secondary text-xs">Total ROI</Text>
-              <Text className={`font-bold text-base ${selectedPt.roi >= 0 ? "text-positive" : "text-negative"}`}>
-                {(selectedPt.roi * 100).toFixed(1)}%
+              <Text className="text-text-secondary text-xs">Ann. ROI</Text>
+              <Text className={`font-bold text-base ${(selectedPt.annualisedRoi ?? selectedPt.roi) >= 0 ? "text-positive" : "text-negative"}`}>
+                {((selectedPt.annualisedRoi ?? selectedPt.roi) * 100).toFixed(1)}%
               </Text>
+              <Text className="text-text-secondary text-xs opacity-60">per year</Text>
             </View>
             <View className="items-center flex-1">
               <Text className="text-text-secondary text-xs">Value CAGR</Text>
