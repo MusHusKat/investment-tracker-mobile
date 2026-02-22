@@ -3,6 +3,7 @@ import type {
   ComputedResponse,
   PurchaseEvent, LoanEvent, TenancyEvent,
   RecurringCostEvent, OneOffEvent, ValuationEvent, SaleEvent,
+  ForecastPoint,
 } from "./types";
 
 // 10.0.2.2 is the Android emulator's alias for the host machine's localhost
@@ -125,6 +126,30 @@ export function fetchComputedWithForecast(propertyId: string, asOf?: Date): Prom
 
 export function updateAppreciationRate(propertyId: string, rate: number): Promise<unknown> {
   return apiPatch(`/api/properties/${propertyId}`, { appreciationRate: rate });
+}
+
+// ─── Projections endpoint ─────────────────────────────────────────────────────
+
+export interface AppreciationPeriod {
+  years: number;
+  rate: number; // e.g. 0.07 = 7%
+}
+
+export interface ProjectionsRequest {
+  propertyIds?: string[];
+  portfolioIds?: string[];
+  periods: AppreciationPeriod[];
+  forecastYears?: number[];
+  asOf?: string;
+}
+
+export interface ProjectionsResponse {
+  properties: { id: string; name: string; forecast: ForecastPoint[] }[];
+  aggregate: ForecastPoint[];
+}
+
+export function fetchProjections(body: ProjectionsRequest): Promise<ProjectionsResponse> {
+  return apiPost<ProjectionsResponse>("/api/projections", body);
 }
 
 // ─── Event CRUD helpers ───────────────────────────────────────────────────────

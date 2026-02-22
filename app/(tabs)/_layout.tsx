@@ -7,6 +7,7 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     Dashboard: "◈",
     Properties: "⊞",
     Portfolios: "⬡",
+    Projections: "◎",
     Settings: "⚙",
   };
   return (
@@ -53,6 +54,13 @@ export default function TabLayout() {
           options={{
             title: "Portfolios",
             tabBarIcon: ({ focused }) => <TabIcon name="Portfolios" focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="projections"
+          options={{
+            title: "Projections",
+            tabBarIcon: ({ focused }) => <TabIcon name="Projections" focused={focused} />,
           }}
         />
         <Tabs.Screen
